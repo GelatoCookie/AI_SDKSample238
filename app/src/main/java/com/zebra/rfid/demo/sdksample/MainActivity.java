@@ -6,7 +6,6 @@ import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -32,17 +31,59 @@ import java.util.HashSet;
  */
 public class MainActivity extends AppCompatActivity implements RFIDHandler.ResponseHandlerInterface {
 
+    /**
+     * List of tag IDs detected by the RFID reader.
+     */
     private final ArrayList<String> tagList = new ArrayList<>();
+
+    /**
+     * Set of unique tag IDs detected by the RFID reader.
+     */
     private final HashSet<String> tagSet = new HashSet<>();
+
+    /**
+     * Handler for RFID operations and responses.
+     */
     private RFIDHandler rfidHandler;
+
+    /**
+     * Request code for Bluetooth permission.
+     */
     private static final int BLUETOOTH_PERMISSION_REQUEST_CODE = 100;
+
+    /**
+     * Progress dialog for showing connection status.
+     */
     private ProgressDialog progressDialog;
+
+    // UI Components
+    private TextView statusTextViewRFID;
+    private ListView tagListView;
+    private ArrayAdapter<String> tagAdapter;
+    private Button btnStart;
+    private Button btnStop;
+    private Button btnScan;
+    private TextView scanResultText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        /**
+         * Called when the activity is starting. Initializes UI and RFID handler.
+         * @param savedInstanceState If the activity is being re-initialized after previously being shut down, this contains the data it most recently supplied.
+         */
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setupUI();
+
+        rfidHandler = new RFIDHandler();
+        checkPermissionsAndInit();
+    }
+
+    /**
+     * Consolidates UI initialization and setup.
+     */
+    private void setupUI() {
         String appName = getString(R.string.app_name);
         try {
             setTitle(appName + " (" + com.zebra.rfid.api3.BuildConfig.VERSION_NAME + ")");
@@ -51,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
             setTitle(appName);
         }
 
-        TextView statusTextViewRFID = findViewById(R.id.textViewStatusrfid);
+        statusTextViewRFID = findViewById(R.id.textViewStatusrfid);
         if (statusTextViewRFID != null) {
             statusTextViewRFID.setOnClickListener(v -> {
                 if (rfidHandler != null) {
@@ -59,33 +100,38 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
                 }
             });
         }
-        // ...existing code...
-        ListView tagListView = findViewById(R.id.tag_list);
-        ArrayAdapter<String> tagAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, tagList);
+
+        tagListView = findViewById(R.id.tag_list);
+        tagAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, tagList);
         if (tagListView != null) {
             tagListView.setAdapter(tagAdapter);
         }
 
-        Button btnStart = findViewById(R.id.TestButton);
-        Button btnStop = findViewById(R.id.TestButton2);
-        Button btnScan = findViewById(R.id.scan);
+        btnStart = findViewById(R.id.StartButton);
+        btnStop = findViewById(R.id.btnStop);
+        btnScan = findViewById(R.id.scan);
+        scanResultText = findViewById(R.id.scanResult);
 
         if (btnStart != null) btnStart.setEnabled(false);
         if (btnStop != null) btnStop.setEnabled(false);
         if (btnScan != null) btnScan.setEnabled(false);
-
-        rfidHandler = new RFIDHandler();
-        checkPermissionsAndInit();
     }
 
     public void updateReaderStatus(String status, boolean isConnected) {
+        /**
+         * Updates the reader status on the UI.
+         * @param status The status message to display.
+         * @param isConnected Whether the reader is connected.
+         */
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed() || status == null) return;
-            TextView statusTextViewRFID = findViewById(R.id.textViewStatusrfid);
             if (statusTextViewRFID != null) {
                 statusTextViewRFID.setText(status);
                 int color = isConnected ? R.color.status_connected : R.color.status_disconnected;
                 statusTextViewRFID.setTextColor(ContextCompat.getColor(this, color));
+            }
+            if (btnStart != null) {
+                btnStart.setEnabled(isConnected);
             }
             if (status.contains(getString(R.string.connecting))) {
                 showProgressDialog(status);
@@ -172,7 +218,9 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     @Override
     protected void onPause() {
         super.onPause();
-        if (rfidHandler != null) rfidHandler.onPause();
+        if (rfidHandler != null) {
+            rfidHandler.onPause();
+        }
     }
 
     @Override
@@ -193,17 +241,18 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     private void toggleInventoryButtons(boolean isRunning) {
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
-            Button btnStart = findViewById(R.id.TestButton);
-            Button btnStop = findViewById(R.id.TestButton2);
             if (btnStart != null) btnStart.setEnabled(!isRunning);
             if (btnStop != null) btnStop.setEnabled(isRunning);
         });
     }
 
     public void setScanButtonEnabled(boolean enabled) {
+        /**
+         * Enables or disables the scan button.
+         * @param enabled True to enable, false to disable.
+         */
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
-            Button btnScan = findViewById(R.id.scan);
             if (btnScan != null) {
                 btnScan.setEnabled(enabled);
             }
@@ -211,6 +260,10 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     }
 
     public void StartInventory(View view) {
+        /**
+         * Starts RFID inventory when the start button is pressed.
+         * @param view The view that triggered this method.
+         */
         toggleInventoryButtons(true);
         clearTagData();
         if (rfidHandler != null) rfidHandler.performInventory();
@@ -221,8 +274,6 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
             if (isFinishing() || isDestroyed()) return;
             tagSet.clear();
             tagList.clear();
-            ListView tagListView = findViewById(R.id.tag_list);
-            ArrayAdapter<String> tagAdapter = (ArrayAdapter<String>) (tagListView != null ? tagListView.getAdapter() : null);
             if (tagAdapter != null) {
                 tagAdapter.notifyDataSetChanged();
             }
@@ -230,14 +281,26 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     }
 
     public void scanCode(View view) {
+        /**
+         * Initiates barcode scanning when the scan button is pressed.
+         * @param view The view that triggered this method.
+         */
         if (rfidHandler != null) rfidHandler.scanCode();
     }
 
     public void testFunction(View view) {
+        /**
+         * Runs a test function when the test button is pressed.
+         * @param view The view that triggered this method.
+         */
         if (rfidHandler != null) rfidHandler.testFunction();
     }
 
     public void StopInventory(View view) {
+        /**
+         * Stops RFID inventory when the stop button is pressed.
+         * @param view The view that triggered this method.
+         */
         toggleInventoryButtons(false);
         if (rfidHandler != null) rfidHandler.stopInventory();
     }
@@ -245,6 +308,10 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     @SuppressLint("SetTextI18n")
     @Override
     public void handleTagdata(TagData[] tagData) {
+        /**
+         * Handles new tag data received from the RFID reader.
+         * @param tagData Array of TagData objects.
+         */
         if (tagData == null || tagData.length == 0) return;
 
         final ArrayList<String> newTags = collectNewTags(tagData);
@@ -273,15 +340,12 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
 
     private void updateTagListUI(ArrayList<String> newTags) {
         tagList.addAll(0, newTags);
-        ListView tagListView = findViewById(R.id.tag_list);
-        ArrayAdapter<String> tagAdapter = (ArrayAdapter<String>) (tagListView != null ? tagListView.getAdapter() : null);
         if (tagAdapter != null) {
             tagAdapter.notifyDataSetChanged();
         }
     }
 
     private void updateStatusTextWithUniqueTags(int totalUniqueTags) {
-        TextView statusTextViewRFID = findViewById(R.id.textViewStatusrfid);
         if (statusTextViewRFID != null && statusTextViewRFID.getText() != null) {
             String statusStr = statusTextViewRFID.getText().toString();
             if (statusStr.contains(getString(R.string.connected))) {
@@ -294,6 +358,10 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
 
     @Override
     public void handleTriggerPress(boolean pressed) {
+        /**
+         * Handles trigger press events from the RFID reader.
+         * @param pressed True if trigger is pressed, false otherwise.
+         */
         toggleInventoryButtons(pressed);
         if (pressed) {
             clearTagData();
@@ -305,17 +373,24 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
 
     @Override
     public void barcodeData(String val) {
+        /**
+         * Displays barcode data received from the scanner.
+         * @param val The barcode value.
+         */
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
-            TextView scanResult = findViewById(R.id.scanResult);
-            if (scanResult != null) {
-                scanResult.setText(getString(R.string.scan_result_label, val != null ? val : ""));
+            if (scanResultText != null) {
+                scanResultText.setText(getString(R.string.scan_result_label, val != null ? val : ""));
             }
         });
     }
 
     @Override
     public void sendToast(String val) {
+        /**
+         * Shows a toast message on the UI.
+         * @param val The message to display.
+         */
         runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
             Toast.makeText(MainActivity.this, val, Toast.LENGTH_SHORT).show();

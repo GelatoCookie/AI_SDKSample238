@@ -31,7 +31,10 @@ import java.util.concurrent.Executors;
 
 
 /**
- * Handler class for RFID operations.
+ * Handler class for RFID operations, connection management, and event processing.
+ * <p>
+ * This class manages the lifecycle of the RFID reader, handles inventory and scanner operations,
+ * and provides callback interfaces for UI updates.
  */
 class RFIDHandler implements Readers.RFIDReaderEventHandler {
         // This method is intentionally left empty for future extension or testing purposes.
@@ -53,6 +56,7 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private int connectionTimer = 0;
+    private volatile boolean bRfidBusy = false;
     private final Runnable timerRunnable = new Runnable() {
         @Override
         public void run() {
@@ -65,6 +69,10 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
     
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    /**
+     * Initializes the handler and SDK with the provided activity context.
+     * @param activity The MainActivity context for UI and resource access.
+     */
     void onCreate(MainActivity activity) {
         context = activity;
         scannerList = new ArrayList<>();
@@ -72,10 +80,22 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         initSdk();
     }
 
+    /**
+     * Placeholder for test function 1.
+     * @return String indicating not implemented.
+     */
     public String Test1() { return "TO DO"; }
 
+    /**
+     * Placeholder for test function 2.
+     * @return String indicating not implemented.
+     */
     public String Test2() { return "TODO2"; }
 
+    /**
+     * Applies default antenna and singulation settings to the RFID reader.
+     * @return Status message indicating result.
+     */
     public String Defaults() {
         if (!isReaderConnected() || context == null) return context != null ? context.getString(R.string.not_connected) : "Not connected";
         try {
@@ -97,10 +117,17 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         return context.getString(R.string.default_settings_applied);
     }
 
+    /**
+     * Checks if the RFID reader is currently connected.
+     * @return True if connected, false otherwise.
+     */
     private boolean isReaderConnected() {
         return reader != null && reader.isConnected();
     }
 
+    /**
+     * Toggles the connection state of the RFID reader (connect/disconnect).
+     */
     public void toggleConnection() {
         if (isReaderConnected()) {
             executor.execute(this::disconnect);
@@ -109,6 +136,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         }
     }
 
+    /**
+     * Handles resume event for the activity, reconnecting the reader if needed.
+     */
     void onResume() {
         executor.execute(() -> {
             String result = connect();
@@ -118,10 +148,16 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         });
     }
 
+    /**
+     * Handles pause event for the activity, disconnecting the reader.
+     */
     void onPause() {
         executor.execute(this::disconnect);
     }
 
+    /**
+     * Handles destroy event for the activity, disposing resources and shutting down executors.
+     */
     void onDestroy() {
         executor.execute(() -> {
             dispose();
@@ -201,6 +237,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         }
     }
 
+    /**
+     * Placeholder for a test function. Throws UnsupportedOperationException if called.
+     */
     public void testFunction() {
         // This method is intentionally left empty for future extension or testing purposes.
         throw new UnsupportedOperationException("testFunction() is not implemented yet.");
@@ -304,6 +343,7 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
 
     private String connectAndConfigureReader() throws InvalidUsageException, OperationFailureException {
         connectionTimer = 0;
+        bRfidBusy = false;
         uiHandler.post(timerRunnable);
         long startTime = System.currentTimeMillis();
         try {
@@ -333,6 +373,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
                 reader.Events.setTagReadEvent(true);
                 reader.Events.setAttachTagDataWithReadEvent(false);
                 reader.Events.setReaderDisconnectEvent(true);
+                reader.Events.setInventoryStartEvent(true);
+                reader.Events.setInventoryStopEvent(true);
+                reader.Events.setOperationEndSummaryEvent(true);
             } catch (InvalidUsageException | OperationFailureException e) {
                 Log.e(TAG, "Configuration failed", e);
             }
@@ -421,7 +464,14 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         }
     }
 
+    /**
+     * Starts RFID inventory operation if the reader is not busy.
+     */
     synchronized void performInventory() {
+        if(bRfidBusy) {
+            Log.d(TAG, "RFID is busy, inventory request ignored.");
+            return;
+        }
         try {
             if (reader != null && reader.isConnected()) reader.Actions.Inventory.perform();
         } catch (InvalidUsageException | OperationFailureException e) {
@@ -429,6 +479,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         }
     }
 
+    /**
+     * Stops RFID inventory operation if the reader is connected.
+     */
     synchronized void stopInventory() {
         try {
             if (reader != null && reader.isConnected()) reader.Actions.Inventory.stop();
@@ -438,6 +491,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         }
     }
 
+    /**
+     * Initiates a scan code operation using the scanner SDK.
+     */
     public void scanCode() {
         String inXml = "<inArgs><scannerID>" + scannerID + "</scannerID></inArgs>";
         executor.execute(() -> executeCommand(DCSSDKDefs.DCSSDK_COMMAND_OPCODE.DCSSDK_DEVICE_PULL_TRIGGER, inXml, scannerID));
@@ -449,6 +505,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         }
     }
 
+    /**
+     * Event handler for RFID read and status events.
+     */
     public class EventHandler implements RfidEventsListener {
         @Override
         public void eventReadNotify(RfidReadEvents e) {
@@ -485,12 +544,22 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
                     disconnect();
                     dispose();
                 });
-            } else {
+            } else if (eventType == STATUS_EVENT_TYPE.INVENTORY_START_EVENT) {
+                bRfidBusy = true;
+            } else if (eventType == STATUS_EVENT_TYPE.INVENTORY_STOP_EVENT) {
+                bRfidBusy = false;
+          } else if (eventType == STATUS_EVENT_TYPE.OPERATION_END_SUMMARY_EVENT) {
+                Log.d(TAG, "Operation End Summary Event");
+            }
+            else {
                 Log.d(TAG, "Unhandled status event: " + eventType);
             }
         }
     }
 
+    /**
+     * Interface for UI callback methods to handle tag data, trigger events, barcode data, and toasts.
+     */
     interface ResponseHandlerInterface {
         void handleTagdata(TagData[] tagData);
         void handleTriggerPress(boolean pressed);
