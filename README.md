@@ -25,6 +25,12 @@ Old Remote: https://github.com/GelatoCookie/AI_Java_SDKSample
 mac:AI_Java_SDKSample-version1-new chucklin$ pwd
 /Users/chucklin/myprojects/MS_Code/Java_AI/AI_Java_SDKSample-version1-new
 
+git tag --list
+Your current tag is v1. This tag marks your initial release in the repository.
+
+git status
+On branch master
+
 ---
 **Changelog**
 
