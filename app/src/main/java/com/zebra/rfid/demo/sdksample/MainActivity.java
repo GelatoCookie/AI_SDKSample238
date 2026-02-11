@@ -2,7 +2,6 @@ package com.zebra.rfid.demo.sdksample;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -12,6 +11,7 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,11 +51,6 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
      */
     private static final int BLUETOOTH_PERMISSION_REQUEST_CODE = 100;
 
-    /**
-     * Progress dialog for showing connection status.
-     */
-    private ProgressDialog progressDialog;
-
     // UI Components
     private TextView statusTextViewRFID;
     private ListView tagListView;
@@ -64,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     private Button btnStop;
     private Button btnScan;
     private TextView scanResultText;
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
         btnStop = findViewById(R.id.btnStop);
         btnScan = findViewById(R.id.scan);
         scanResultText = findViewById(R.id.scanResult);
+        progressBar = findViewById(R.id.progressBar);
 
         if (btnStart != null) btnStart.setEnabled(false);
         if (btnStop != null) btnStop.setEnabled(false);
@@ -134,29 +131,16 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
                 btnStart.setEnabled(isConnected);
             }
             if (status.contains(getString(R.string.connecting))) {
-                showProgressDialog(status);
+                showProgress(true);
             } else {
-                dismissProgressDialog();
+                showProgress(false);
             }
         });
     }
 
-    private void showProgressDialog(String message) {
-        if (isFinishing() || isDestroyed()) return;
-        if (progressDialog == null) {
-            progressDialog = new ProgressDialog(this);
-            progressDialog.setIndeterminate(true);
-            progressDialog.setCancelable(false);
-        }
-        progressDialog.setMessage(message);
-        if (!progressDialog.isShowing()) {
-            progressDialog.show();
-        }
-    }
-
-    private void dismissProgressDialog() {
-        if (progressDialog != null && progressDialog.isShowing()) {
-            progressDialog.dismiss();
+    private void showProgress(boolean show) {
+        if (progressBar != null) {
+            progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -231,7 +215,7 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
 
     @Override
     protected void onDestroy() {
-        dismissProgressDialog();
+        showProgress(false);
         if (rfidHandler != null) {
             rfidHandler.onDestroy();
         }
