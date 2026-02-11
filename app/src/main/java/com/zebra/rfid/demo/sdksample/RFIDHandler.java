@@ -561,8 +561,6 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
      * Interface for UI callback methods to handle tag data, trigger events, barcode data, and toasts.
      */
     interface ResponseHandlerInterface {
-        void handleTagdata(TagData[] tagData);
-        void handleTriggerPress(boolean pressed);
         void barcodeData(String val);
         void sendToast(String val);
     }

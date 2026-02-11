@@ -306,7 +306,6 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
     }
 
     @SuppressLint("SetTextI18n")
-    @Override
     public void handleTagdata(TagData[] tagData) {
         /**
          * Handles new tag data received from the RFID reader.
@@ -356,7 +355,6 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
         }
     }
 
-    @Override
     public void handleTriggerPress(boolean pressed) {
         /**
          * Handles trigger press events from the RFID reader.
