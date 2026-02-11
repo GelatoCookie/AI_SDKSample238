@@ -379,7 +379,7 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
             } catch (InvalidUsageException | OperationFailureException e) {
                 Log.e(TAG, "Configuration failed", e);
             }
-            Log.d(TAG, "ECRT: Configuration successful, RFID SDK Version = " + BuildConfig.GIT_VERSION);
+            Log.d(TAG, "ECRT: Configuration successful, RFID SDK Version = " + com.zebra.rfid.api3.BuildConfig.VERSION_NAME);
         }
     }
 

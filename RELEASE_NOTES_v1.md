@@ -11,6 +11,7 @@ This is the initial release (v1) of the Zebra RFID SDK Sample Application, provi
 - Real-time tag and barcode display
 - Device connection status and error handling
 - Automated build, deploy, and launch script (auto.sh)
+- Automated build, deploy, and launch script (build_deploy_launch.sh)
 
 ## Improvements
 - Refactored UI logic for button enable/disable
@@ -23,7 +24,7 @@ This is the initial release (v1) of the Zebra RFID SDK Sample Application, provi
 - MainActivity.java: UI logic, Javadoc, button wiring
 - RFIDHandler.java: Javadoc, event handling, logic improvements
 - activity_main.xml: Button IDs, onClick wiring, layout updates
-- auto.sh: New script for build/deploy/launch automation
+- build_deploy_launch.sh: New script for build/deploy/launch automation
 
 ## Known Issues
 - None reported for this release
